@@ -1,0 +1,2 @@
+module BrakeHelper
+end
