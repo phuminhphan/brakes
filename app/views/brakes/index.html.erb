@@ -10,13 +10,20 @@
     </tr>
   </thead>
   <tbody>
+
+  <%= button_to 'Get Brake Data!', '/gather_brake_data', method: :get %>
+
     <% @products.each do |brake| %>
       <tr>
         <td><%= brake.year %></td>
-        <td><%= brake.year %></td>
-        <td><%= brake.year %></td>
-        <td><%= brake.year %></td>
+        <td><%= brake.make %></td>
+        <td><%= brake.model %></td>
+        <td><%= brake.submodel %></td>
       </tr>
     <% end %>
   </tbody>
 </table>
+
+ <h4> Total Products: <%= @products.size %></h4>
+
+
