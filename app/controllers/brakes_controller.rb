@@ -47,7 +47,7 @@ class BrakesController < ApplicationController
           response = http_client.request(submodel_get_request)
           page = Nokogiri::HTML(response.body)
           submodels = page.css('li').collect {|submodel_li| submodel_li.text}
-          submodels.delete("All")
+          submodels["All"] = "submodel"
           initialize_hash_keys(complete_data[year][make][model], submodels)
           
           # NOW MAKE THIS CALL: #https://www.r1concepts.com/listing/search/2016/Cadillac/SRX/4.6L_4627CC_V8_GAS_DOHC_Naturally_Aspirated
