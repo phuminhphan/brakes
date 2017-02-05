@@ -54,23 +54,42 @@
 #####
 class CreateProducts < ActiveRecord::Migration[5.0]
   def change
-    create_table :products do |t|
+    create_table :categories do |t|
       t.integer :year, null: false
       t.string :make, null: false
       t.string :model, null: false
       t.string :submodel, null: false
-      t.string :cat
+
+      t.timestamps
+    end
+    # subcat:Brake-Shoes
+    # prefix:2902
+    # rotor_set:0
+    # cat:Other-Items
+    # brand_id:4
+    # rotor_color:
+    #   counter:1
+    # brand:R1-Series
+    # year:2016
+    # make:Acura
+    # model:RDX
+    # submodel:submodel
+    # position:AWD
+    # padtype:
+    create_table :products do |t|
+      t.string :name
+      t.text :description
       t.string :subcat
-      t.string :brand_id
-      t.string :rotor_set
+      t.string :cat
       t.string :rotor_color
       t.string :brand
+      t.integer :brand_id
+      t.integer :rotor_set
       t.string :position
-      t.string :padtype
-      t.string :product_name, null: false
-      t.text :description
       t.float :price
-      t.string :prefix
+      t.integer :prefix
+      t.references :category
+
       t.timestamps
     end
   end

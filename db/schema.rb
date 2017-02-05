@@ -12,25 +12,31 @@
 
 ActiveRecord::Schema.define(version: 20170125181415) do
 
+  create_table "categories", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
+    t.integer  "year",       null: false
+    t.string   "make",       null: false
+    t.string   "model",      null: false
+    t.string   "submodel",   null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "products", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
-    t.integer  "year",                       null: false
-    t.string   "make",                       null: false
-    t.string   "model",                      null: false
-    t.string   "submodel",                   null: false
-    t.string   "cat"
+    t.string   "name"
+    t.text     "description", limit: 65535
     t.string   "subcat"
-    t.string   "brand_id"
-    t.string   "rotor_set"
+    t.string   "cat"
     t.string   "rotor_color"
     t.string   "brand"
+    t.integer  "brand_id"
+    t.integer  "rotor_set"
     t.string   "position"
-    t.string   "padtype"
-    t.string   "product_name",               null: false
-    t.text     "description",  limit: 65535
-    t.float    "price",        limit: 24
-    t.string   "prefix"
-    t.datetime "created_at",                 null: false
-    t.datetime "updated_at",                 null: false
+    t.float    "price",       limit: 24
+    t.integer  "prefix"
+    t.integer  "category_id"
+    t.datetime "created_at",                null: false
+    t.datetime "updated_at",                null: false
+    t.index ["category_id"], name: "index_products_on_category_id", using: :btree
   end
 
 end

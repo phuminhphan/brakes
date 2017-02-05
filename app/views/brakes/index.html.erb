@@ -7,6 +7,7 @@
       <th>Make</th>
       <th>Model</th>
       <th>Submodel</th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -19,6 +20,7 @@
         <td><%= brake.make %></td>
         <td><%= brake.model %></td>
         <td><%= brake.submodel %></td>
+        <td><%= link_to "Fetch products", brake_products_brake_path(brake) %></td>
       </tr>
     <% end %>
   </tbody>

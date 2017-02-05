@@ -47,9 +47,9 @@ class BrakesController < ApplicationController
           response = http_client.request(submodel_get_request)
           page = Nokogiri::HTML(response.body)
           submodels = page.css('li').collect {|submodel_li| submodel_li.text}
-          submodels["All"] = "submodel"
+          #submodels["All"] = "submodel"      ???
           initialize_hash_keys(complete_data[year][make][model], submodels)
-          
+
           # NOW MAKE THIS CALL: #https://www.r1concepts.com/listing/search/2016/Cadillac/SRX/4.6L_4627CC_V8_GAS_DOHC_Naturally_Aspirated
           # This call should get the products and go on from there.  Please take a look at db/migrate/create_products migration to see the attribute to fill in
         end
@@ -58,32 +58,84 @@ class BrakesController < ApplicationController
 
     end
 
-    puts "@@@@@@@@@@@@@@@@complete_data now", JSON.pretty_generate(complete_data)
+    #puts "@@@@@@@@@@@@@@@@complete_data now", JSON.pretty_generate(complete_data)
 
     #Inserting into the Products table
     complete_data.each do |year, year_hash|
       year_hash.each do |make, make_hash|
         make_hash.each do |model, model_hash|
           model_hash.each do |submodel|
-            Product.find_or_create_by({year: year, make: make, model: model, submodel: submodel[0], product_name: "n/a"})
+            product = Product.find_or_create_by({year: year, make: make, model: model, submodel: submodel[0], product_name: "n/a"})
+            puts ("Inserting: #{product.attributes.inspect}")
             # for now add row to database but later we check if db has row already? if it does, don't do http request to server at all
 
-            
+
 
         #etc... You may need to double check the looping through of Hashes
         # All the way in, please insert into Products table
         # Product.create({year: year, make: make, model: model, submodel: submodel})
         # notice the other attributes aren't filled in... It's ok.  We can query those later but AS LONG AS WE HAVE THE PERMUTATIONS IN THE database
         # WE CAN literally make another method called "fetch_product_types_and_prices" to further update the record with description, product_name, price, category, position (rear or front) etc...
-            
+
           end
         end
       end
     end
 
+    redirect_to root_path
   end
 
-  def fetch_product_types_and_prices
+  def brake_products
+    @product = Product.find(params[:id])
+
+
+    product_listing_uri = URI.parse("https://www.r1concepts.com/listing/search/#{@product.year}/#{@product.make}/#{@product.model}/#{@product.submodel}") #Get the makes
+
+    http_client = Net::HTTP.new(product_listing_uri.host, product_listing_uri.port)
+    http_client.use_ssl = true
+
+    complete_data = {}
+
+
+    make_get_request = Net::HTTP::Get.new(product_listing_uri) # Now for some reason, getting models is a HTTP GET LOL
+    response = http_client.request(make_get_request)
+    page = Nokogiri::HTML(response.body)
+
+    #
+    # subcat:Brake-Shoes
+    # prefix:2902
+    # rotor_set:0
+    # cat:Other-Items
+    # brand_id:4
+    # rotor_color:
+    #   counter:1
+    # brand:R1-Series
+    # year:2016
+    # make:Acura
+    # model:RDX
+    # submodel:submodel
+    # position:AWD
+    # padtype:
+    page.css("[id^=single_pro_]").each_with_index do |product_div_container, product_index|
+      product_index+=1
+      product_title = product_div_container.css("#optcaption#{product_index}").text
+      puts ("Product Title #{product_index}: #{product_title}")
+
+      product_description = product_div_container.css("#optdesc#{product_index}").text
+
+      puts ("Product Description #{product_index}: #{product_description}")
+
+      product_div_container.css("ul#opt#{product_index} li > a.subcat_option").each_with_index do |product_variation_li, variation_index|
+        rel = product_variation_li['rel']
+        accesskey = product_variation_li['accesskey']
+        puts ("REL: #{rel}    ACCESSKEY: #{accesskey}")
+        subcat = product_variation_li.css("#subcat#{rel}#{accesskey}").first['value']
+
+      end
+    end
+
+
+    redirect_to root_path
   end
 
 private

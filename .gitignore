@@ -11,7 +11,8 @@ result.json
 /spec/examples.txt
 /test/tmp/
 /test/version_tmp/
-/tmp/
+tmp/*
+log/*
 
 # Used by dotenv library to load environment variables.
 # .env
