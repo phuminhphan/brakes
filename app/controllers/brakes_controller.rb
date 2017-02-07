@@ -87,33 +87,34 @@ class BrakesController < ApplicationController
 
   def brake_products
     @product = Product.find(params[:id])
-
+    @product.model = @product.model.gsub(' ', '_')
+    @product.submodel = @product.submodel.gsub(' ', '_')
 
     product_listing_uri = URI.parse("https://www.r1concepts.com/listing/search/#{@product.year}/#{@product.make}/#{@product.model}/#{@product.submodel}") #Get the makes
+
+    puts "PRODUCT URI:", product_listing_uri
 
     http_client = Net::HTTP.new(product_listing_uri.host, product_listing_uri.port)
     http_client.use_ssl = true
 
     complete_data = {}
 
-
     make_get_request = Net::HTTP::Get.new(product_listing_uri) # Now for some reason, getting models is a HTTP GET LOL
     response = http_client.request(make_get_request)
     page = Nokogiri::HTML(response.body)
 
-    #
     # subcat:Brake-Shoes
     # prefix:2902
     # rotor_set:0
     # cat:Other-Items
     # brand_id:4
     # rotor_color:
-    #   counter:1
+    # counter:1
     # brand:R1-Series
-    # year:2016
-    # make:Acura
-    # model:RDX
-    # submodel:submodel
+    # year:2016 ---
+    # make:Hyunda ---
+    # model:Elantra GT ---
+    # submodel:Base Hatchbach ---
     # position:AWD
     # padtype:
     page.css("[id^=single_pro_]").each_with_index do |product_div_container, product_index|
@@ -130,7 +131,27 @@ class BrakesController < ApplicationController
         accesskey = product_variation_li['accesskey']
         puts ("REL: #{rel}    ACCESSKEY: #{accesskey}")
         subcat = product_variation_li.css("#subcat#{rel}#{accesskey}").first['value']
+        puts "SUBCAT:", subcat, "------------"
+        prefix = product_variation_li.css("#prefix#{rel}#{accesskey}").first['value']
+        puts "PREFIX:", prefix, "------------"
+        rotorSet = product_variation_li.css("#rotor_set#{rel}#{accesskey}").first['value']
+        puts "rotorSet:", rotorSet, "------------"
+        rotorColor = product_variation_li.css("#rotor_color#{rel}#{accesskey}").first['value']
+        puts "rotorColor:", rotorColor, "------------"
+        brand = product_variation_li.css("#brand#{rel}#{accesskey}").first['value']
+        puts "brand:", brand, "------------"
+        brandId = product_variation_li.css("#brand_id#{rel}#{accesskey}").first['value']
+        puts "brandId:", brandId, "------------"
 
+         # Call to get price
+        get_price_URL = product_listing_uri = URI.parse("https://www.r1concepts.com/listing/getPrice/subcat=OEM-Rotors-Kits&prefix=FEB&rotor_set=2&cat=Brake-Kits&brand_id=2&rotor_color=1&counter=1&brand=eLINE-Series&year=2016&make=Hyundai&model=Elantra_GT&submodel=Base_Hatchback_4-Door&position=Front&padtype=")
+
+        puts "GET PRICE URI:", get_price_URL
+
+
+        get_price_request = Net::HTTP::Get.new(get_price_URL) 
+
+        puts "get_price_request:",get_price_request #currently prints out net:http node hoding response form AJAX call
       end
     end
 
