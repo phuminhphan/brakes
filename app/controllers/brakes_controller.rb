@@ -9,7 +9,7 @@ class BrakesController < ApplicationController
     @categories = Category.all
   end
 
-  # GET gather_brake_data()
+  # GET gather_brake_data() year, makes, models, submodels using AJAX calls
   def gather_brake_data
     years = (2016..2016).to_a #1 year only for now
     uri = URI.parse('https://www.r1concepts.com/home/allMake') #Get the makes
@@ -62,8 +62,6 @@ class BrakesController < ApplicationController
           model_hash.each do |submodel|
             category = Category.find_or_create_by({year: year, make: make, model: model, submodel: submodel[0]})
             puts ("Inserting: #{category.attributes.inspect}")
-
-
           end
         end
       end
@@ -128,6 +126,7 @@ class BrakesController < ApplicationController
         rotor_set = product_variation_li.css("#rotor_set#{rel}#{accesskey}").first['value']
         rotor_color = product_variation_li.css("#rotor_color#{rel}#{accesskey}").first['value']
         brand = product_variation_li.css("#brand#{rel}#{accesskey}").first['value']
+
         brand_id = product_variation_li.css("#brand_id#{rel}#{accesskey}").first['value']
         form_data = {
           subcat: subcat,
@@ -153,8 +152,6 @@ class BrakesController < ApplicationController
         #   end
         #
         # end
-
-
 
       end
     end
