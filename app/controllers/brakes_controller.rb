@@ -130,6 +130,8 @@ class BrakesController < ApplicationController
         rel = product_variation_li['rel']
         accesskey = product_variation_li['accesskey']
         puts ("REL: #{rel}    ACCESSKEY: #{accesskey}")
+        cat = product_variation_li.css("#category#{rel}#{accesskey}").first['value']
+        puts "CAT:", cat, "------------"
         subcat = product_variation_li.css("#subcat#{rel}#{accesskey}").first['value']
         puts "SUBCAT:", subcat, "------------"
         prefix = product_variation_li.css("#prefix#{rel}#{accesskey}").first['value']
@@ -142,20 +144,34 @@ class BrakesController < ApplicationController
         puts "brand:", brand, "------------"
         brandId = product_variation_li.css("#brand_id#{rel}#{accesskey}").first['value']
         puts "brandId:", brandId, "------------"
-
-         # Call to get price
-        get_price_URL = product_listing_uri = URI.parse("https://www.r1concepts.com/listing/getPrice/subcat=OEM-Rotors-Kits&prefix=FEB&rotor_set=2&cat=Brake-Kits&brand_id=2&rotor_color=1&counter=1&brand=eLINE-Series&year=2016&make=Hyundai&model=Elantra_GT&submodel=Base_Hatchback_4-Door&position=Front&padtype=")
+        # counter = product_variation_li.css("#counter#{rel}#{accesskey}").first['value']
+        # puts "counter:", counter, "------------"
+        # position = product_variation_li.css("#position#{rel}#{accesskey}").first['value']
+        # puts "position:", position, "------------"
+        
+    # Call to get price
+    # https://www.r1concepts.com/listing/getPrice/
+    # subcat=OEM-Rotors-Kits&prefix=FEB&rotor_set=2&cat=Brake-Kits&brand_id=2&rotor_color=1&counter=1&brand=eLINE-Series&year=2016&make=Hyundai&model=Elantra_GT&submodel=Base_Hatchback_4-Door&position=Front&padtype=
+        get_price_URL = product_listing_uri = URI.parse("https://www.r1concepts.com/listing/getPrice/")
 
         puts "GET PRICE URI:", get_price_URL
 
+        http_client = Net::HTTP.new(get_price_URL.host, get_price_URL.port)
+        http_client.use_ssl = true
 
-        get_price_request = Net::HTTP::Get.new(get_price_URL) 
+        request = Net::HTTP::Post.new(get_price_URL.path) # For some reason, getting the makes require a HTTP POST
+        request['X-Requested-With'] = 'XMLHttpRequest' #Specifies that this is AJAX
 
-        puts "get_price_request:",get_price_request #currently prints out net:http node hoding response form AJAX call
+        request.set_form_data({'subcat' => subcat, 'prefix' => prefix, 'cat' => cat, 'brand_id' => brandId, 'brand' => brand, 'rotor_color' => rotorColor, 'counter' => 1, 'year' => @product.year, 'make' => @product.make, 'model' => @product.model, 'submodel' => @product.submodel, 'position'=> 'Front'})
+  
+        response = http_client.request(request)
+        puts "+++++++++++++++++++++++++++++++++++++++++++++++++++"
+        puts "response:",response.body #currently prints out net:http node hoding response form AJAX call
+    # ########################################################################
+
       end
     end
-
-
+   
     redirect_to root_path
   end
 
