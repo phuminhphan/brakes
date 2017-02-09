@@ -5,8 +5,9 @@ require 'json/ext' # to use the C based extension instead of json/pure
 
 class BrakesController < ApplicationController
 
-  def index
+  def index #called implicitly when route is hit
     @categories = Category.all
+    @products = Product.all
   end
 
   # GET gather_brake_data() year, makes, models, submodels using AJAX calls
@@ -110,6 +111,8 @@ class BrakesController < ApplicationController
     request = Net::HTTP::Post.new(get_price_URL.path) # For some reason, getting the makes require a HTTP POST
     request['X-Requested-With'] = 'XMLHttpRequest' #Specifies that this is AJAX
 
+    
+
     page.css("[id^=single_pro_]").each_with_index do |product_div_container, product_index|
       product_index+=1
       product_title = product_div_container.css("#optcaption#{product_index}").text
@@ -135,25 +138,51 @@ class BrakesController < ApplicationController
           brand_id: brand_id,
           brand: brand,
           rotor_color: rotor_color,
+          rotor_set: rotor_set,
           counter: 1,
           year: @category.year,
           make: @category.make,
           model: @category.model,
           submodel: @category.submodel,
-          position: position
+          position: 'Front'
         }
-        # if product_div_container.css("select#position_select_#{product_index}").length > 0
-        #   product_div_container.css("select#position_select_#{product_index} option").each_with_index do |position_select_option, position_index|
-        #     position = position_select_option['value']
-        #     request.set_form_data(form_data)
-        #
-        #     response = http_client.request(request)
-        #     puts ("@ Response BODY: #{response.body}")
-        #   end
-        #
-        # end
+        request.set_form_data(form_data)
+      
+        response = http_client.request(request)
+        # puts ("@ Response BODY: #{response.body}")
+        price = JSON.parse(response.body)["product_price"]
+        puts price
+      
+       form_data_for_DB = {
+          subcat: subcat,
+          prefix: prefix,
+          cat: cat,
+          brand_id: brand_id,
+          brand: brand,
+          rotor_color: rotor_color,
+          rotor_set: rotor_set,
+          position: 'Front',
+          price: price,
+          category_id: @category.id
+        }
 
+      Product.find_or_create_by(form_data_for_DB)
       end
+
+
+    # complete_data.each do |year, year_hash|
+    #   year_hash.each do |make, make_hash|
+    #     make_hash.each do |model, model_hash|
+    #       model_hash.each do |submodel|
+    #         category = Category.find_or_create_by({year: year, make: make, model: model, submodel: submodel[0]})
+    #         puts ("Inserting: #{category.attributes.inspect}")
+    #       end
+    #     end
+    #   end
+    # end
+      # form_data[:category_id] = @category.id
+      # Product.find_or_create_by(form_data)
+      
     end
 
     redirect_to root_path
