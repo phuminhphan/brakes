@@ -23,7 +23,7 @@ ActiveRecord::Schema.define(version: 20170125181415) do
 
   create_table "products", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
     t.string   "name"
-    t.text     "description", limit: 65535
+    t.text     "description",   limit: 65535
     t.string   "subcat"
     t.string   "cat"
     t.string   "rotor_color"
@@ -31,11 +31,12 @@ ActiveRecord::Schema.define(version: 20170125181415) do
     t.integer  "brand_id"
     t.integer  "rotor_set"
     t.string   "position"
-    t.float    "price",       limit: 24
+    t.float    "retail_price",  limit: 24
+    t.float    "product_price", limit: 24
     t.integer  "prefix"
     t.integer  "category_id"
-    t.datetime "created_at",                null: false
-    t.datetime "updated_at",                null: false
+    t.datetime "created_at",                  null: false
+    t.datetime "updated_at",                  null: false
     t.index ["category_id"], name: "index_products_on_category_id", using: :btree
   end
 

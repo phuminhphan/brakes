@@ -10,8 +10,8 @@ class BrakesController < ApplicationController
     @products = Product.all
   end
 
-  # GET gather_brake_data() year, makes, models, submodels using AJAX calls
-  def gather_brake_data
+  # GET gather_brake_category() year, makes, models, submodels using AJAX calls and stores into Category Table
+  def gather_brake_category
     years = (2016..2016).to_a #1 year only for now
     uri = URI.parse('https://www.r1concepts.com/home/allMake') #Get the makes
 
@@ -56,7 +56,7 @@ class BrakesController < ApplicationController
 
     end
 
-    #Inserting into the Products table
+    #Inserting into the Category table
     complete_data.each do |year, year_hash|
       year_hash.each do |make, make_hash|
         make_hash.each do |model, model_hash|
@@ -71,11 +71,12 @@ class BrakesController < ApplicationController
     redirect_to root_path
   end
 
+# GET brake_products() and stores into Product Table
   def brake_products
     @category = Category.find(params[:id])
     @category.model = @category.model.gsub(' ', '_')
     @category.submodel = @category.submodel.gsub(' ', '_')
-
+    ### Check if any product with category_id = params[:id]
     product_listing_uri = URI.parse("https://www.r1concepts.com/listing/search/#{@category.year}/#{@category.make}/#{@category.model}/#{@category.submodel}") #Get the makes
 
     puts "PRODUCT URI:", product_listing_uri
@@ -85,24 +86,11 @@ class BrakesController < ApplicationController
 
 
     make_get_request = Net::HTTP::Get.new(product_listing_uri) # Now for some reason, getting models is a HTTP GET LOL
+
     response = http_client.request(make_get_request)
     page = Nokogiri::HTML(response.body)
 
-    # subcat:Brake-Shoes
-    # prefix:2902
-    # rotor_set:0
-    # cat:Other-Items
-    # brand_id:4
-    # rotor_color:
-    # counter:1
-    # brand:R1-Series
-    # year:2016 ---
-    # make:Hyunda ---
-    # model:Elantra GT ---
-    # submodel:Base Hatchbach ---
-    # position:AWD
-    # padtype:
-
+    # Prepare AJAX call to grab the price
     get_price_URL = URI.parse("https://www.r1concepts.com/listing/getPrice/")
 
     http_client = Net::HTTP.new(get_price_URL.host, get_price_URL.port)
@@ -111,14 +99,20 @@ class BrakesController < ApplicationController
     request = Net::HTTP::Post.new(get_price_URL.path) # For some reason, getting the makes require a HTTP POST
     request['X-Requested-With'] = 'XMLHttpRequest' #Specifies that this is AJAX
 
-    
+    positions = []
+    page.css("#position_select_1 option").each do |d|
+      puts d.attr("value")
+      positions << d.text
+    end
+    puts "POSITIONS=========================== #{positions}"
 
     page.css("[id^=single_pro_]").each_with_index do |product_div_container, product_index|
       product_index+=1
       product_title = product_div_container.css("#optcaption#{product_index}").text
-
+      puts "############################"
+      puts product_title
       product_description = product_div_container.css("#optdesc#{product_index}").text
-
+      puts product_description
       product_div_container.css("ul#opt#{product_index} li > a.subcat_option").each_with_index do |product_variation_li, variation_index|
         rel = product_variation_li['rel']
         accesskey = product_variation_li['accesskey']
@@ -131,60 +125,57 @@ class BrakesController < ApplicationController
         brand = product_variation_li.css("#brand#{rel}#{accesskey}").first['value']
 
         brand_id = product_variation_li.css("#brand_id#{rel}#{accesskey}").first['value']
-        form_data = {
-          subcat: subcat,
-          prefix: prefix,
-          cat: cat,
-          brand_id: brand_id,
-          brand: brand,
-          rotor_color: rotor_color,
-          rotor_set: rotor_set,
-          counter: 1,
-          year: @category.year,
-          make: @category.make,
-          model: @category.model,
-          submodel: @category.submodel,
-          position: 'Front'
-        }
+        
+        for position in positions do 
+          form_data = {
+            subcat: subcat,
+            prefix: prefix,
+            cat: cat,
+            brand_id: brand_id,
+            brand: brand,
+            rotor_color: rotor_color,
+            rotor_set: rotor_set,
+            counter: 1,
+            year: @category.year,
+            make: @category.make,
+            model: @category.model,
+            submodel: @category.submodel,
+            position: position
+          }
+
+        # select form_data
         request.set_form_data(form_data)
       
         response = http_client.request(request)
-        # puts ("@ Response BODY: #{response.body}")
-        price = JSON.parse(response.body)["product_price"]
-        puts price
-      
-       form_data_for_DB = {
-          subcat: subcat,
-          prefix: prefix,
-          cat: cat,
-          brand_id: brand_id,
-          brand: brand,
-          rotor_color: rotor_color,
-          rotor_set: rotor_set,
-          position: 'Front',
-          price: price,
-          category_id: @category.id
-        }
+        product_price = JSON.parse(response.body)["product_price"].gsub!('$','').to_f
+        puts product_price.class
 
-      Product.find_or_create_by(form_data_for_DB)
+        retail_price = JSON.parse(response.body)["retail_price"]
+        puts retail_price
+
+        description = JSON.parse(response.body)["brand_desc"]
+        puts description
+
+        form_data_for_DB = {
+            name: product_title,
+            description: description,
+            subcat: subcat,
+            prefix: prefix,
+            cat: cat,
+            brand_id: brand_id,
+            brand: brand,
+            rotor_color: rotor_color,
+            rotor_set: rotor_set,
+            position: position,
+            product_price: product_price,
+            retail_price: retail_price,
+            category_id: @category.id
+          }
+
+          Product.find_or_create_by(form_data_for_DB)
+        end 
       end
-
-
-    # complete_data.each do |year, year_hash|
-    #   year_hash.each do |make, make_hash|
-    #     make_hash.each do |model, model_hash|
-    #       model_hash.each do |submodel|
-    #         category = Category.find_or_create_by({year: year, make: make, model: model, submodel: submodel[0]})
-    #         puts ("Inserting: #{category.attributes.inspect}")
-    #       end
-    #     end
-    #   end
-    # end
-      # form_data[:category_id] = @category.id
-      # Product.find_or_create_by(form_data)
-      
     end
-
     redirect_to root_path
   end
 

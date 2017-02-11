@@ -86,7 +86,8 @@ class CreateProducts < ActiveRecord::Migration[5.0]
       t.integer :brand_id
       t.integer :rotor_set
       t.string :position
-      t.float :price
+      t.float :retail_price
+      t.float :product_price
       t.integer :prefix
       t.references :category
 

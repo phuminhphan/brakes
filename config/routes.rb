@@ -7,7 +7,7 @@ Rails.application.routes.draw do
     end
   end
 
-  get '/gather_brake_data' => 'brakes#gather_brake_data', :as => 'brake_data'
+  get '/gather_brake_category' => 'brakes#gather_brake_category', :as => 'brake_data'
   put '/print_me' => 'brakes#print_me', :as => 'print_me'
 
 
