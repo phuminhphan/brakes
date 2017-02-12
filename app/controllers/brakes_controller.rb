@@ -62,7 +62,12 @@ class BrakesController < ApplicationController
     complete_data.each do |year, year_hash|
       year_hash.each do |make, make_hash|
         make_hash.each do |model, model_hash|
+          # Check if model has many submodels and one of it is "All", if so, remove "All"
+          if model_hash.keys.include?('All') && model_hash.keys.length > 1
+            model_hash.delete('All')
+          end
           model_hash.each do |submodel|
+
             category = Category.find_or_create_by({year: year, make: make, model: model, submodel: submodel[0]})
             puts ("Inserting: #{category.attributes.inspect}")
           end
@@ -80,7 +85,9 @@ class BrakesController < ApplicationController
     @category.submodel = @category.submodel.gsub(' ', '_')
 
     ### Check if any product with category_id = params[:id]
-    product_listing_uri = URI.parse("https://www.r1concepts.com/listing/search/#{@category.year}/#{@category.make}/#{@category.model}/#{@category.submodel}") #Get the makes
+
+    submodel = ["All", "all", "ALL"].include?(@category.submodel) ? 'submodel' : @category.submodel
+    product_listing_uri = URI.parse("https://www.r1concepts.com/listing/search/#{@category.year}/#{@category.make}/#{@category.model}/#{submodel}") #Get the makes
 
 
     puts "PRODUCT URI:", product_listing_uri
@@ -94,92 +101,103 @@ class BrakesController < ApplicationController
     page = Nokogiri::HTML(response.body)
 
 
+    get_option_url = URI.parse('https://www.r1concepts.com/listing/searchOption/')
+    get_color_option_url = URI.parse('https://www.r1concepts.com/listing/searchColorOption/')
     # Prepare AJAX call to grab the price
-    get_price_URL = URI.parse("https://www.r1concepts.com/listing/getPrice/")
-
-    http_client = Net::HTTP.new(get_price_URL.host, get_price_URL.port)
-    http_client.use_ssl = true
-
-    request = Net::HTTP::Post.new(get_price_URL.path) # For some reason, getting the makes require a HTTP POST
-    request['X-Requested-With'] = 'XMLHttpRequest' #Specifies that this is AJAX
-
-    positions = []
-    page.css("#position_select_1 option").each do |d|
-      puts d.attr("value")
-      positions << d.text
-    end
-    puts "POSITIONS=========================== #{positions}"
+    get_price_url = URI.parse("https://www.r1concepts.com/listing/getPrice/")
 
     page.css("[id^=single_pro_]").each_with_index do |product_div_container, product_index|
 
       product_index+=1
       product_title = product_div_container.css("#optcaption#{product_index}").text
-      puts "############################"
-      puts product_title
+
       product_description = product_div_container.css("#optdesc#{product_index}").text
 
-      product_div_container.css("ul#opt#{product_index} li > a.subcat_option").each_with_index do |product_variation_li, variation_index|
-        rel = product_variation_li['rel']
-        accesskey = product_variation_li['accesskey']
+      product_div_container.css("ul#opt#{product_index} > li").each_with_index do |product_variation_li, variation_index|
+        a_tag = product_variation_li.css('a.subcat_option').first
+        rel = a_tag['rel']
+        accesskey = a_tag['accesskey']
         puts ("REL: #{rel}    ACCESSKEY: #{accesskey}")
         cat = product_variation_li.css("#category#{rel}#{accesskey}").first['value']
         subcat = product_variation_li.css("#subcat#{rel}#{accesskey}").first['value']
         prefix = product_variation_li.css("#prefix#{rel}#{accesskey}").first['value']
         rotor_set = product_variation_li.css("#rotor_set#{rel}#{accesskey}").first['value']
-        rotor_color = product_variation_li.css("#rotor_color#{rel}#{accesskey}").first['value']
         brand = product_variation_li.css("#brand#{rel}#{accesskey}").first['value']
-
-
         brand_id = product_variation_li.css("#brand_id#{rel}#{accesskey}").first['value']
 
-        for position in positions do
-          form_data = {
-            subcat: subcat,
-            prefix: prefix,
-            cat: cat,
-            brand_id: brand_id,
-            brand: brand,
-            rotor_color: rotor_color,
-            rotor_set: rotor_set,
-            counter: 1,
-            year: @category.year,
-            make: @category.make,
-            model: @category.model,
-            submodel: @category.submodel,
-            position: position
-          }
 
-        # select form_data
-        request.set_form_data(form_data)
 
-        response = http_client.request(request)
-        product_price = JSON.parse(response.body)["product_price"].gsub!('$','').to_f
-        puts product_price.class
+        # Get ROTOR Colors based on Performance
+        color_options_response_json = ajax_post(get_option_url, {
+          subcat: subcat,
+          prefix: prefix,
+          cat: cat,
+          brand_id: brand_id,
+          rotor_set: rotor_set,
+          count: 1,
+          year: @category.year,
+          make: @category.make,
+          model: @category.model,
+          submodel: @category.submodel
+        }, {is_json: true})
 
-        retail_price = JSON.parse(response.body)["retail_price"]
-        puts retail_price
-
-        description = JSON.parse(response.body)["brand_desc"]
-        puts description
-
-        form_data_for_DB = {
-            name: product_title,
-            description: description,
-            subcat: subcat,
-            prefix: prefix,
-            cat: cat,
-            brand_id: brand_id,
-            brand: brand,
-            rotor_color: rotor_color,
-            rotor_set: rotor_set,
-            position: position,
-            product_price: product_price,
-            retail_price: retail_price,
-            category_id: @category.id
-          }
-
-          Product.find_or_create_by(form_data_for_DB)
+        rotor_color_options = Nokogiri::HTML(color_options_response_json["colorcoatselect"])
+        rotor_colors = []
+        rotor_color_options.css('option').each do |option_tag|
+          if option_tag['value'].include?("_")
+            rotor_colors << option_tag['value'].split('_')[0]
+          end
         end
+
+        position_options = Nokogiri::HTML(color_options_response_json["allposition"])
+        positions = []
+        position_options.css('option').each do |option_tag|
+          positions << option_tag['value']
+        end
+
+        rotor_colors.each do |rotor_color|
+          positions.each do |position|
+            # Get PRICE based on Color and position
+            get_price_json = ajax_post(get_price_url, {
+              subcat: subcat,
+              prefix: prefix,
+              cat: cat,
+              brand_id: brand_id,
+              brand: brand,
+              rotor_color: rotor_color,
+              rotor_set: rotor_set,
+              counter: 1,
+              year: @category.year,
+              make: @category.make,
+              model: @category.model,
+              submodel: @category.submodel,
+              position: position
+            }, {is_json: true})
+
+            product_price = get_price_json['product_price'].gsub!('$','').to_f
+            retail_price = get_price_json['retail_price']
+            description = get_price_json['brand_desc']
+
+            form_data_for_DB = {
+              name: product_title,
+              description: description,
+              subcat: subcat,
+              prefix: prefix,
+              cat: cat,
+              brand_id: brand_id,
+              brand: brand,
+              rotor_color: rotor_color,
+              rotor_set: rotor_set,
+              position: position,
+              product_price: product_price,
+              retail_price: retail_price,
+              category_id: @category.id
+            }
+            Product.find_or_create_by(form_data_for_DB)
+          end
+
+        end
+
       end
     end
     redirect_to root_path
@@ -191,6 +209,16 @@ private
     array_of_keys.each do |key|
       resulting_hash[key] = {}
     end
+  end
+
+  def ajax_post(url, form_data, options={})
+    http_client = Net::HTTP.new(url.host, url.port)
+    http_client.use_ssl = true
+    request = Net::HTTP::Post.new(url.path) # For some reason, getting the makes require a HTTP POST
+    request['X-Requested-With'] = 'XMLHttpRequest' #Specifies that this is AJAX
+    request.set_form_data(form_data)
+    response = http_client.request(request)
+    return options[:is_json] ? JSON.parse(response.body) : response.body
   end
 
 end

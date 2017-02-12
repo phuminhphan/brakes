@@ -38,7 +38,8 @@
                   <th>Rotor Set</th>
                   <th>Rotor Color</th>
                   <th>Prefix</th>
-                  <th>Price</th>
+                  <th>Product price</th>
+                  <th>Retail Price</th>
                 </tr>
               </thead>
               <tbody>
@@ -54,7 +55,8 @@
                   <td><%= product.rotor_set %></td>
                   <td><%= product.rotor_color %></td>
                   <td><%= product.prefix %></td>
-                  <td><b>$<%= product.price %></b></td>
+                  <td><b>$<%= product.product_price %></b></td>
+                  <td >$<%= product.retail_price %></td>
                 </tr>
               <% end  %>
               </tbody>
