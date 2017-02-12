@@ -16,16 +16,55 @@
 
     <% @categories.each do |category| %>
       <tr>
-        <td><%= category.year %></td>
-        <td><%= category.make %></td>
-        <td><%= category.model %></td>
-        <td><%= category.submodel %></td>
-        <td><%= link_to "Fetch products", brake_products_brake_path(category) %></td>
+        <th><%= category.year %></th>
+        <th><%= category.make %></th>
+        <th><%= category.model %></th>
+        <th><%= category.submodel %></th>
+        <th><%= link_to "Fetch products", brake_products_brake_path(category) %></th>
       </tr>
+      <% if category.products.length > 0 %>
+        <tr>
+          <td colspan="5">
+            <table>
+              <thead>
+                <tr>
+                  <th>Product Name</th>
+                  <th>Description</th>
+                  <th>Cat</th>
+                  <th>Subcat</th>
+                  <th>Position</th>
+                  <th>Brand</th>
+                  <th>Brand ID</th>
+                  <th>Rotor Set</th>
+                  <th>Rotor Color</th>
+                  <th>Prefix</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+              <% category.products.each do |product| %>
+                <tr>
+                  <td><%= product.name %></td>
+                  <td><%= product.description %></td>
+                  <td><%= product.cat %></td>
+                  <td><%= product.subcat %></td>
+                  <td><%= product.position %></td>
+                  <td><%= product.brand %></td>
+                  <td><%= product.brand_id %></td>
+                  <td><%= product.rotor_set %></td>
+                  <td><%= product.rotor_color %></td>
+                  <td><%= product.prefix %></td>
+                  <td><b>$<%= product.price %></b></td>
+                </tr>
+              <% end  %>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      <% end %>
     <% end %>
   </tbody>
 </table>
 
  <h4> Total Products: <%= @categories.size %></h4>
-
 

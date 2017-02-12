@@ -2,8 +2,10 @@ require 'net/http'
 require 'uri'
 require 'nokogiri'
 require 'json/ext' # to use the C based extension instead of json/pure
+require 'open-uri'
 
 class BrakesController < ApplicationController
+  include ActionView::Helpers::SanitizeHelper
 
   def index #called implicitly when route is hit
     @categories = Category.all
@@ -76,19 +78,21 @@ class BrakesController < ApplicationController
     @category = Category.find(params[:id])
     @category.model = @category.model.gsub(' ', '_')
     @category.submodel = @category.submodel.gsub(' ', '_')
+
     ### Check if any product with category_id = params[:id]
     product_listing_uri = URI.parse("https://www.r1concepts.com/listing/search/#{@category.year}/#{@category.make}/#{@category.model}/#{@category.submodel}") #Get the makes
+
 
     puts "PRODUCT URI:", product_listing_uri
 
     http_client = Net::HTTP.new(product_listing_uri.host, product_listing_uri.port)
     http_client.use_ssl = true
 
-
     make_get_request = Net::HTTP::Get.new(product_listing_uri) # Now for some reason, getting models is a HTTP GET LOL
 
     response = http_client.request(make_get_request)
     page = Nokogiri::HTML(response.body)
+
 
     # Prepare AJAX call to grab the price
     get_price_URL = URI.parse("https://www.r1concepts.com/listing/getPrice/")
@@ -107,12 +111,13 @@ class BrakesController < ApplicationController
     puts "POSITIONS=========================== #{positions}"
 
     page.css("[id^=single_pro_]").each_with_index do |product_div_container, product_index|
+
       product_index+=1
       product_title = product_div_container.css("#optcaption#{product_index}").text
       puts "############################"
       puts product_title
       product_description = product_div_container.css("#optdesc#{product_index}").text
-      puts product_description
+
       product_div_container.css("ul#opt#{product_index} li > a.subcat_option").each_with_index do |product_variation_li, variation_index|
         rel = product_variation_li['rel']
         accesskey = product_variation_li['accesskey']
@@ -124,9 +129,10 @@ class BrakesController < ApplicationController
         rotor_color = product_variation_li.css("#rotor_color#{rel}#{accesskey}").first['value']
         brand = product_variation_li.css("#brand#{rel}#{accesskey}").first['value']
 
+
         brand_id = product_variation_li.css("#brand_id#{rel}#{accesskey}").first['value']
-        
-        for position in positions do 
+
+        for position in positions do
           form_data = {
             subcat: subcat,
             prefix: prefix,
@@ -145,7 +151,7 @@ class BrakesController < ApplicationController
 
         # select form_data
         request.set_form_data(form_data)
-      
+
         response = http_client.request(request)
         product_price = JSON.parse(response.body)["product_price"].gsub!('$','').to_f
         puts product_price.class
@@ -173,7 +179,7 @@ class BrakesController < ApplicationController
           }
 
           Product.find_or_create_by(form_data_for_DB)
-        end 
+        end
       end
     end
     redirect_to root_path
