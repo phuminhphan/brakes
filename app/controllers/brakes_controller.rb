@@ -108,12 +108,20 @@ class BrakesController < ApplicationController
       positions << d.text
     end
 
+    # fish = page.css("[id^=single_pro_]")
+    # puts "FISHIESSSSSSSSSSSSSSSSSS"
+    # puts fish.size
+
     page.css("[id^=single_pro_]").each_with_index do |product_div_container, product_index|
       product_index+=1
       product_title = product_div_container.css("#optcaption#{product_index}").text
+      puts " product_title FISHIESSSSSSSSSSSSSSSSSS"
+      puts product_title
       product_div_container.css("ul#opt#{product_index} li > a.subcat_option").each_with_index do |product_variation_li, variation_index|
         rel = product_variation_li['rel']
         accesskey = product_variation_li['accesskey']
+        puts "REL: ", rel
+        puts "ACCESSkey: ", accesskey
         cat = product_variation_li.css("#category#{rel}#{accesskey}").first['value']
         subcat = product_variation_li.css("#subcat#{rel}#{accesskey}").first['value']
         prefix = product_variation_li.css("#prefix#{rel}#{accesskey}").first['value']
